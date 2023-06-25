@@ -27,22 +27,22 @@ public class ArrowGenerator : MonoBehaviour
         positionY = 6.0f;
     }
 
-    void Update()
-    {
-        if (player.GetComponent<PlayerManager>().hp <= 0)
-            return;
+    //void Update()
+    //{
+    //    if (player.GetComponent<PlayerManager>().hp <= 0)
+    //        return;
 
-        delta += Time.deltaTime;
+    //    delta += Time.deltaTime;
 
-        // 화살을 일정 주기로 랜덤한 위치에 생성합니다.
-        if (delta > arrowSpawnInterval)
-        {
-            delta = 0;
+    //    // 화살을 일정 주기로 랜덤한 위치에 생성합니다.
+    //    if (delta > arrowSpawnInterval)
+    //    {
+    //        delta = 0;
 
-            GameObject newArrow = Instantiate(arrowPrefab);
+    //        GameObject newArrow = Instantiate(arrowPrefab);
 
-            positionX = Random.Range(-screenHalfWidth, screenHalfWidth);
-            newArrow.transform.position = new Vector3(positionX, positionY, 0);
-        }
-    }
+    //        positionX = Random.Range(-screenHalfWidth, screenHalfWidth);
+    //        newArrow.transform.position = new Vector3(positionX, positionY, 0);
+    //    }
+    //}
 }

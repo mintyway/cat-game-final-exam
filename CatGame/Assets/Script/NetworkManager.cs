@@ -7,46 +7,76 @@ using UnityEngine;
 using System.Security.Cryptography;
 using System;
 using UnityEngine.Analytics;
-
-/* 바이트 규칙
- * 0    1   2
- * 0: 게임의 전반적인 데이터
- *      0: 새로운 플레이어 생성 요청
- *      N: N번 플레이어 입장 관련
- *          0: 입장
- *          1: 퇴장
- *      
- * N: N번 플레이어 관련 데이터
- *      0: 생존 관련 데이터
- *          0: 생존
- *          1: 사망
- *      1: 이동 관련 데이터
- *          0: 정지
- *          1: 좌 이동
- *          2: 우 이동
- */
+using Unity.VisualScripting;
+using UdonDLL;
 
 public class NetworkManager : MonoBehaviour
 {
-    Socket socket;
-    IPEndPoint endPoint;
-    IPEndPoint serverEP;
-    EndPoint latestEP;
-    GameObject player;
+	private GameObject playerManager;
 
-    void Start()
-    {
-        string myIP = "192.168.35.54";
-        socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        endPoint = new IPEndPoint(IPAddress.Parse(myIP), 52001);
-        serverEP = new IPEndPoint(IPAddress.Loopback, 52000);
-        latestEP = new IPEndPoint(IPAddress.None, 0);
+	public string serverIP;
 
-        player = GameObject.Find("Player");
-    }
+	private UdpClient unicastClient;
+	private UdpClient multicastClient;
+	private IPEndPoint unicastServerEP;
+	private IPEndPoint multicastEP;
+	private IPEndPoint remoteEP;
 
-    void Update()
-    {
+	void Start()
+	{
+		playerManager = GameObject.Find("PlayerManager");
 
-    }
+		if (string.IsNullOrEmpty(serverIP))
+			serverIP = "127.0.0.1";
+
+		unicastServerEP = new IPEndPoint(IPAddress.Parse(serverIP), 52000);
+		multicastEP = new IPEndPoint(IPAddress.Parse("239.0.0.1"), 52001);
+		remoteEP = new IPEndPoint(IPAddress.None, 0);
+
+		unicastClient = new UdpClient();
+		multicastClient = new UdpClient();
+
+		multicastClient.JoinMulticastGroup(multicastEP.Address);
+		multicastClient.Client.Bind(new IPEndPoint(IPAddress.Any, 52001));
+	}
+
+	void Update() { }
+
+	public void OnKeyInput(UdonDLL.PlayerNumber playerNumber, UdonDLL.Direction direction)
+	{
+		UdonDLL.KeyInputPacket keyInputPacket = new UdonDLL.KeyInputPacket();
+
+		keyInputPacket.playerNumber = playerNumber;
+		keyInputPacket.direction = direction;
+
+		byte[] sendBuffer = keyInputPacket.Serialize();
+		unicastClient.Send(sendBuffer, sendBuffer.Length, unicastServerEP);
+
+		byte[] receiveBuffer = multicastClient.Receive(ref remoteEP);
+		keyInputPacket.Deserialize(receiveBuffer);
+
+		if (keyInputPacket.direction == UdonDLL.Direction.Left)
+			playerManager.GetComponent<PlayerManager>().MovePlayer(keyInputPacket.playerNumber, UdonDLL.Direction.Left);
+		else
+			playerManager.GetComponent<PlayerManager>().MovePlayer(keyInputPacket.playerNumber, UdonDLL.Direction.Right);
+	}
+
+	public UdonDLL.PlayerNumber OnJoin()
+	{
+		while (true)
+		{
+			UdonDLL.JoinPacket joinPacket = new UdonDLL.JoinPacket() { isCheck = false };
+
+			byte[] sendBuffer = joinPacket.Serialize();
+			unicastClient.Send(sendBuffer, sendBuffer.Length, unicastServerEP);
+
+			byte[] receiveBuffer = unicastClient.Receive(ref remoteEP);
+			joinPacket.Deserialize(receiveBuffer);
+
+			if (joinPacket.isCheck == false)
+				continue;
+
+			return joinPacket.playerNumber;
+		}
+	}
 }

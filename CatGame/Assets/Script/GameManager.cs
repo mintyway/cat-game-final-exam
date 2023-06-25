@@ -13,8 +13,8 @@ public class GameManager : MonoBehaviour
 
 	void Start()
 	{
-		hpGauge = GameObject.Find("HPGauge");
-		player = GameObject.Find("Player");
+		hpGauge = GameObject.Find("HPGauge1");
+		player = GameObject.Find("Player1");
 		gameOver = GameObject.Find("GameOver");
 		gameOverRectTransform = gameOver.GetComponent<RectTransform>();
 	}
