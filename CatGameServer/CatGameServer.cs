@@ -1,137 +1,140 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
+using System.Threading.Tasks;
+using Udon;
 
-class Program
+internal class CatGameServer
 {
-    static void Main(string[] args)
-    {
-		UDPServer udpServer = new UDPServer();
-		udpServer.ServerStart();
-    }
+	private IPEndPoint unicastServerEndPoint;
+	private UdpClient unicastClient;
+	private IPEndPoint multicastGroupEndPoint;
+	private UdpClient multicastClient;
 
-    //private static void ProcessPlayerMoveData(byte[] receiveBytes)
-    //{
-    //    byte[] sendBytes = new byte[1];
-    //    const byte Stop = 0;
-    //    const byte Left = 1;
-    //    const byte Right = 2;
+	private static List<IPEndPoint> clientEndPointList;
 
-    //    switch (receiveBytes[2])
-    //    {
-    //        case Left:
-    //            sendBytes[0] = Left;
-    //            Send(sendBytes, latestEP);
-    //            Console.WriteLine();
-    //            break;
+	private async Task OnJoin(byte[] receiveBuffer, IPEndPoint remoteEndPoint)
+	{
+		Udon.JoinPacket joinPacket = new Udon.JoinPacket(receiveBuffer);
 
-    //        case Right:
-    //            sendBytes[0] = Right;
-    //            Send(sendBytes, latestEP);
-    //            Console.WriteLine();
-    //            break;
+		// 연결 체크, 클라이언트 접속 리스트에 추가, 플레이어 넘버 할당 수행
+		joinPacket.isCheck = true;
+		clientEndPointList.Add(remoteEndPoint);
+		joinPacket.playerNumber = (PlayerNumber)((clientEndPointList.Count - 1) % 2);
 
-    //        default:
-    //            sendBytes[0] = Stop;
-    //            Send(sendBytes, latestEP);
-    //            break;
-    //    }
-    //}
+		byte[] sendBuffer = joinPacket.Serialize();
+		await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, remoteEndPoint);
 
-    //private static void ProcessPlayerData(byte[] receiveBytes)
-    //{
-    //    const byte AliveData = 0;
-    //    const byte MovingData = 1;
+		// 접속 로그 출력
+		Console.WriteLine($"[Log] [{remoteEndPoint}] {joinPacket.playerNumber} 접속");
+	}
 
-    //    switch (receiveBytes[1])
-    //    {
-    //        case AliveData:
-    //            GenerateNewPlayer(receiveBytes);
-    //            break;
+	private async Task OnChat(byte[] receiveBuffer)
+	{
+		throw new NotImplementedException();
+	}
 
-    //        case MovingData:
-    //            ProcessPlayerMoveData(receiveBytes);
-    //            break;
+	private async Task OnKeyInput(byte[] receiveBuffer)
+	{
+		Udon.KeyInputPacket keyInputPacket = new Udon.KeyInputPacket(receiveBuffer);
 
-    //        default:
-    //            break;
-    //    }
-    //}
+		byte[] sendBuffer = keyInputPacket.Serialize();
+		// 받은 플레이어 이동 데이터를 다시 클라이언트들에게 송신
+		await multicastClient.SendAsync(sendBuffer, sendBuffer.Length, multicastGroupEndPoint);
 
-    //private static void ProcessPlayerAliveData(byte[] receiveBytes)
-    //{
-    //}
+		// 플레이어로부터 받은 입력 방향 로그 출력
+		Console.WriteLine($"[Log] {keyInputPacket.playerNumber} {keyInputPacket.direction} Move");
+	}
 
-    //private static void GenerateNewPlayer(byte[] receiveBytes)
-    //{
-    //    byte[] sendBytes = new byte[1];
+	private async Task OnPlayerStatus(byte[] receiveBuffer)
+	{
+		throw new NotImplementedException();
+	}
 
-    //    clientEPList.Add(latestEP);
+	private async Task OnArrowSeed(byte[] receiveBuffer)
+	{
+		throw new NotImplementedException();
+	}
 
-    //    Console.WriteLine($"{clientEPList.Count - 1}번 플레이어 입장");
-    //    sendBytes[0] = (byte)clientEPList.Count;
+	private async Task ReceiveWaitAsync()
+	{
+		while (true)
+		{
+			try
+			{
+				UdpReceiveResult receiveResult = await unicastClient.ReceiveAsync();
+				Udon.PacketType packetType = (Udon.PacketType)receiveResult.Buffer[0];
 
-    //    Send(sendBytes, clientEPList[clientEPList.Count - 1]);
-    //}
+				Task taskHandle;
 
-    //private static void ProcessGameData(byte[] receiveBytes)
-    //{
-    //    if (receiveBytes[1] == 0)
-    //    {
-    //        GenerateNewPlayer(receiveBytes);
-    //    }
-    //    else
-    //    {
-    //        ProcessPlayerAliveData(receiveBytes);
-    //    }
-    //}
+				// 데이터 구별 후 맞는 로직 실행
+				switch (packetType)
+				{
+					case Udon.PacketType.Join:
+						taskHandle = Task.Run(() => OnJoin(receiveResult.Buffer, receiveResult.RemoteEndPoint));
 
-    //private static void Receive()
-    //{
-    //    const byte GameData = 0;
+						continue;
 
-    //    byte[] receiveBytes = new byte[1024];
+					case Udon.PacketType.Chat:
+						taskHandle = Task.Run(() => OnChat(receiveResult.Buffer));
+						continue;
 
-    //    while (true)
-    //    {
-    //        int receiveBytesCount = socket.ReceiveFrom(receiveBytes, ref latestEP);
-    //        Console.Write($"[{latestEP.ToString()}]로부터 수신된 데이터: ");
+					case Udon.PacketType.KeyInput:
+						taskHandle = Task.Run(() => OnKeyInput(receiveResult.Buffer));
 
-    //        for (int i = 0; i < receiveBytesCount; i++)
-    //        {
-    //            Console.Write($"[{receiveBytes[i]}]");
-    //        }
+						continue;
 
-    //        Console.WriteLine();
+					case Udon.PacketType.PlayerStatus:
+						taskHandle = Task.Run(() => OnPlayerStatus(receiveResult.Buffer));
 
-    //        int dataType = receiveBytes[0];
+						continue;
 
-    //        if (dataType == GameData)
-    //        {
-    //            ProcessGameData(receiveBytes);
-    //        }
-    //        else
-    //        {
-    //            ProcessPlayerData(receiveBytes);
-    //        }
-    //    }
-    //}
+					case Udon.PacketType.ArrowSeed:
+						taskHandle = Task.Run(() => OnArrowSeed(receiveResult.Buffer));
 
-    //private static void Send(byte[] sendBytes, EndPoint sendEP)
-    //{
-    //    socket.SendTo(sendBytes, sendEP);
-    //    Console.Write($"[{sendEP.ToString()}]로 송신된 데이터: ");
+						continue;
 
-    //    for (int i = 0; i < sendBytes.Length; i++)
-    //    {
-    //        Console.Write($"[{sendBytes[i]}]");
-    //    }
+					default:
+						continue;
+				}
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e.Message);
+			}
+		}
+	}
 
-    //    Console.WriteLine();
+	public void ServerStart()
+	{
+		Task receiveWaitAsyncTask = Task.Run(() => ReceiveWaitAsync());
 
-    //    return;
-    //}
+		Console.WriteLine("Cat Game 게임용 서버 프로그램입니다.");
+		Console.WriteLine("서버가 정상적으로 실행되었습니다.");
+		Console.WriteLine("서버를 종료하시려면 아무키나 누르십시오...");
+		Console.ReadLine();
+
+		// 종료시 스레드를 강제종료하고 유니캐스트, 멀티캐스트 클라이언트 닫기
+		unicastClient.Close();
+		multicastClient.Close();
+	}
+
+	public CatGameServer()
+	{
+		// 유니캐스트용 클라이언트 설정
+		unicastServerEndPoint = new IPEndPoint(IPAddress.Any, 52000);
+		unicastClient = new UdpClient(unicastServerEndPoint);
+
+		// 멀티캐스트용 클라이언트 설정(송신만 할 것이기에 바인드는 필요 없음)
+		multicastGroupEndPoint = new IPEndPoint(IPAddress.Parse("239.0.0.1"), 52001);
+		multicastClient = new UdpClient();
+		multicastClient.JoinMulticastGroup(multicastGroupEndPoint.Address);
+
+		// 접속한 클라이언트를 저장할 리스트
+		clientEndPointList = new List<IPEndPoint>();
+	}
 }

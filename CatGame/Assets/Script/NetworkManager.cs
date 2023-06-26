@@ -6,77 +6,121 @@ using System.Text;
 using UnityEngine;
 using System.Security.Cryptography;
 using System;
+using System.Threading.Tasks;
 using UnityEngine.Analytics;
 using Unity.VisualScripting;
-using UdonDLL;
+using Udon;
 
 public class NetworkManager : MonoBehaviour
 {
-	private GameObject playerManager;
-
-	public string serverIP;
-
+	private IPEndPoint unicastServerEndPoint;
 	private UdpClient unicastClient;
+	private IPEndPoint multicastGroupEndPoint;
 	private UdpClient multicastClient;
-	private IPEndPoint unicastServerEP;
-	private IPEndPoint multicastEP;
-	private IPEndPoint remoteEP;
+	private Task receiveWaitAsyncTask;
+
+	private GameObject playerManager;
+	public string serverIP;
 
 	void Start()
 	{
-		playerManager = GameObject.Find("PlayerManager");
-
 		if (string.IsNullOrEmpty(serverIP))
 			serverIP = "127.0.0.1";
 
-		unicastServerEP = new IPEndPoint(IPAddress.Parse(serverIP), 52000);
-		multicastEP = new IPEndPoint(IPAddress.Parse("239.0.0.1"), 52001);
-		remoteEP = new IPEndPoint(IPAddress.None, 0);
+		playerManager = GameObject.Find("PlayerManager");
 
+		unicastServerEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), 52000);
 		unicastClient = new UdpClient();
-		multicastClient = new UdpClient();
 
-		multicastClient.JoinMulticastGroup(multicastEP.Address);
-		multicastClient.Client.Bind(new IPEndPoint(IPAddress.Any, 52001));
+		multicastGroupEndPoint = new IPEndPoint(IPAddress.Parse("239.0.0.1"), 52001);
+		multicastClient = new UdpClient(new IPEndPoint(IPAddress.Any, 52001));
+		multicastClient.JoinMulticastGroup(multicastGroupEndPoint.Address);
+
+		receiveWaitAsyncTask = MulticastReceiveWaitAsync();
 	}
 
 	void Update() { }
 
-	public void OnKeyInput(UdonDLL.PlayerNumber playerNumber, UdonDLL.Direction direction)
+	public async Task SendKeyInputAsync(Udon.PlayerNumber playerNumber, Udon.Direction direction)
 	{
-		UdonDLL.KeyInputPacket keyInputPacket = new UdonDLL.KeyInputPacket();
+		Udon.KeyInputPacket keyInputPacket = new Udon.KeyInputPacket();
 
+		// 패킷에 플레이어 번호와 방향 할당
 		keyInputPacket.playerNumber = playerNumber;
 		keyInputPacket.direction = direction;
 
 		byte[] sendBuffer = keyInputPacket.Serialize();
-		unicastClient.Send(sendBuffer, sendBuffer.Length, unicastServerEP);
-
-		byte[] receiveBuffer = multicastClient.Receive(ref remoteEP);
-		keyInputPacket.Deserialize(receiveBuffer);
-
-		if (keyInputPacket.direction == UdonDLL.Direction.Left)
-			playerManager.GetComponent<PlayerManager>().MovePlayer(keyInputPacket.playerNumber, UdonDLL.Direction.Left);
-		else
-			playerManager.GetComponent<PlayerManager>().MovePlayer(keyInputPacket.playerNumber, UdonDLL.Direction.Right);
+		await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
 	}
 
-	public UdonDLL.PlayerNumber OnJoin()
+	public async Task<Udon.PlayerNumber> OnJoinAsync()
 	{
 		while (true)
 		{
-			UdonDLL.JoinPacket joinPacket = new UdonDLL.JoinPacket() { isCheck = false };
+			Udon.JoinPacket joinPacket = new Udon.JoinPacket() { isCheck = false };
 
+			// 서버에 접속 요청을 전송
 			byte[] sendBuffer = joinPacket.Serialize();
-			unicastClient.Send(sendBuffer, sendBuffer.Length, unicastServerEP);
+			await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
 
-			byte[] receiveBuffer = unicastClient.Receive(ref remoteEP);
-			joinPacket.Deserialize(receiveBuffer);
+			// 서버 접속 확인 수신
+			UdpReceiveResult receiveResult = await unicastClient.ReceiveAsync();
+			joinPacket.Deserialize(receiveResult.Buffer);
 
+			// 서버 접속 실패 시 재시도
 			if (joinPacket.isCheck == false)
 				continue;
 
 			return joinPacket.playerNumber;
+		}
+	}
+
+	private void OnKeyInput(byte[] receiveBuffer)
+	{
+		Udon.KeyInputPacket keyInputPacket = new Udon.KeyInputPacket(receiveBuffer);
+
+		// 플레이어 번호와 방향을 MovePlayer의 인자로 넘기는 코드
+		if (keyInputPacket.direction == Udon.Direction.Left)
+			playerManager.GetComponent<PlayerManager>().MovePlayer(keyInputPacket.playerNumber, Udon.Direction.Left);
+		else
+			playerManager.GetComponent<PlayerManager>().MovePlayer(keyInputPacket.playerNumber, Udon.Direction.Right);
+	}
+
+	//멀티캐스트 수신대기
+	private async Task MulticastReceiveWaitAsync()
+	{
+		while (true)
+		{
+			try
+			{
+				UdpReceiveResult receiveResult = await multicastClient.ReceiveAsync();
+				Udon.PacketType packetType = (Udon.PacketType)receiveResult.Buffer[0];
+
+				// 데이터 구별 후 맞는 로직 실행
+				switch (packetType)
+				{
+					case PacketType.Chat:
+						break;
+
+					case PacketType.KeyInput:
+						OnKeyInput(receiveResult.Buffer);
+
+						break;
+
+					case PacketType.PlayerStatus:
+						break;
+
+					case PacketType.ArrowSeed:
+						break;
+
+					default:
+						break;
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.Log(e.Message);
+			}
 		}
 	}
 }
