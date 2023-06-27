@@ -4,19 +4,20 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using Udon;
 using UnityEngine;
+using Udon;
 using static UnityEditor.Experimental.GraphView.GraphView;
 
 public class PlayerManager : MonoBehaviour
 {
-	private GameObject networkManager;
-	private GameObject gameManager;
-	private GameObject[] player = new GameObject[2];
-	private Udon.PlayerNumber playerNumber;
+	private GameManager gameManager;
+	private NetworkManager networkManager;
+	public Dictionary<PlayerNumber, GameObject> Players { get; private set; } = new Dictionary<PlayerNumber, GameObject>();
+	public PlayerNumber PlayingPlayerNumber { get; private set; }
+	public PlayerNumber NonPlayingPlayerNumber { get; private set; }
 
 	public float initialHP;
-	private float[] hp = new float[2];
+	public Dictionary<PlayerNumber, float> PlayerHPs { get; private set; } = new Dictionary<PlayerNumber, float>();
 	public float speed;
 
 	private float targetFrameTime = 1f / 60f;
@@ -34,69 +35,107 @@ public class PlayerManager : MonoBehaviour
 		if (speed == 0)
 			speed = 0.2f;
 
-		networkManager = GameObject.Find("NetworkManager");
-		gameManager = GameObject.Find("GameManager");
+		gameManager = GameObject.Find("GameManager").GetComponent<GameManager>();
+		networkManager = GameObject.Find("NetworkManager").GetComponent<NetworkManager>();
 
-		player[(byte)Udon.PlayerNumber.Player1] = GameObject.Find("Player1");
-		player[(byte)Udon.PlayerNumber.Player2] = GameObject.Find("Player2");
+		Players[PlayerNumber.Player1] = GameObject.Find("Player1");
+		Players[PlayerNumber.Player2] = GameObject.Find("Player2");
 
-		hp[(byte)Udon.PlayerNumber.Player1] = initialHP;
-		hp[(byte)Udon.PlayerNumber.Player2] = initialHP;
+		PlayerHPs[PlayerNumber.Player1] = initialHP;
+		PlayerHPs[PlayerNumber.Player2] = initialHP;
 
-		Task<Udon.PlayerNumber> joinTask = networkManager.GetComponent<NetworkManager>().OnJoinAsync();
-		playerNumber = await joinTask;
+		Task<PlayerNumber> joinTask = networkManager.OnJoinAsync();
+		PlayingPlayerNumber = await joinTask;
+		NonPlayingPlayerNumber = (PlayerNumber)(((byte)PlayingPlayerNumber + 1) % 2);
 	}
 
 	void Update()
 	{
+		if (networkManager.IsRunning)
+			return;
+
 		accumulatedTime += Time.deltaTime;
 
+		// 1/60초에 한번 입력을 받을 수 있도록 하는 코드
 		if (accumulatedTime >= targetFrameTime)
 		{
-			if (hp[(byte)playerNumber] <= 0)
+			if (PlayerHPs[PlayingPlayerNumber] <= 0)
 				return;
 
 			taskKeyInputAsync = InputKeyboard();
 
-			accumulatedTime = 0f;
+			accumulatedTime -= targetFrameTime;
 		}
 	}
 
-	// 키보드 입력을 반영하는 코드
+	/* 함수 설명
+	 * 클라이언트로부터 입력된 키를 NetworkManager의 SendKeyInputAsync함수의 인자로 사용해 호출하는 비동기 함수이다.
+	 * 
+	 * 사용 예시:
+	 * Task task = InputKeyboard();
+	 */
 	private async Task InputKeyboard()
 	{
 		if (Input.GetKey(KeyCode.LeftArrow))
 		{
-			taskLeftKeyInputAsync = networkManager.GetComponent<NetworkManager>().SendKeyInputAsync(playerNumber, Udon.Direction.Left);
+			taskLeftKeyInputAsync = networkManager.SendKeyInputAsync(PlayingPlayerNumber, Direction.Left);
 			await taskLeftKeyInputAsync;
 		}
 
 		else if (Input.GetKey(KeyCode.RightArrow))
 		{
-			taskRightKeyInputAsync = networkManager.GetComponent<NetworkManager>().SendKeyInputAsync(playerNumber, Udon.Direction.Right);
+			taskRightKeyInputAsync = networkManager.SendKeyInputAsync(PlayingPlayerNumber, Direction.Right);
 			await taskRightKeyInputAsync;
 		}
 	}
 
-	public void MovePlayer(Udon.PlayerNumber playerNumber, Udon.Direction direction)
+	/* 함수 설명
+	 * 서버로부터 되받은 enum 타입 플레이어 번호와 enum 타입 방향을 매개변수로 사용해 플레이중인 캐릭터를 움직이는 함수이다.
+	 * 서버로 전송했던 키입력을 그대로 다시 되받은 NetworkManager에서 캐릭터를 움직이는데 사용한다.
+	 * 
+	 * 사용 예시:
+	 * networkManager.MovePlayer(playerNumber, direction);
+	 */
+	public void MovePlayer(PlayerNumber playerNumber, Direction direction)
 	{
 		if (direction == Direction.Left)
 		{
-			player[(byte)playerNumber].transform.Translate(-speed, 0, 0);
+			Players[playerNumber].transform.Translate(-speed, 0, 0);
 		}
 		else
 		{
-			player[(byte)playerNumber].transform.Translate(speed, 0, 0);
+			Players[playerNumber].transform.Translate(speed, 0, 0);
 		}
 	}
 
-	// 체력을 깎는 함수
-	//public void DecreaseHP(float damage)
-	//{
-	//	hp -= damage;
-	//	gameManager.GetComponent<GameManager>().RenderPlayerHP(hp);
+	/* 함수 설명
+	 * 화살 같은 공격에 의한 float타입 데미지를 입력으로 받고 클라이언트에서 플레이중인 캐릭터의 체력을 감소시키는 함수이다.
+	 * 클라이언트에서 플레이 중인 캐릭터의 피격 판정을 위해 사용된다.
+	 * 
+	 * 사용 예시:
+	 * playerManager.DecreaseHP(damage);
+	 */
+	// 수정 필요
+	public void DecreaseHP(float damage)
+	{
+		PlayerHPs[PlayingPlayerNumber] -= damage;
 
-	//	if (hp <= 0)
-	//		gameManager.GetComponent<GameManager>().RenderGameOver();
-	//}
+		if (PlayerHPs[PlayingPlayerNumber] <= 0)
+		{ }
+	}
+
+	/* 함수 설명
+	 * 플레이어 둘 중 누군가 하나라도 죽으면 true를 반환하는 함수이다.
+	 * 게임을 멈추고 결과를 출력할때 사용한다.
+	 * 
+	 * 사용 예시:
+	 * if (playerManager.IsAnyPlayerDead())
+	 */
+	public bool IsAnyPlayerDead()
+	{
+		if ((PlayerHPs[PlayerNumber.Player1] <= 0) || (PlayerHPs[PlayerNumber.Player1] <= 0))
+			return true;
+
+		return false;
+	}
 }

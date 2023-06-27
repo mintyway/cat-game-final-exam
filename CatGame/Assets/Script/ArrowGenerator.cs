@@ -5,7 +5,9 @@ using UnityEngine;
 public class ArrowGenerator : MonoBehaviour
 {
     public GameObject arrowPrefab;
-    private GameObject player;
+	private NetworkManager networkManager;
+	private GameObject playerManager;
+	private GameObject player;
 
     // 게임 레벨디자인 시 조정이 필요한 값
     public float arrowSpawnInterval;
@@ -19,30 +21,35 @@ public class ArrowGenerator : MonoBehaviour
 
     void Start()
     {
-        player = GameObject.Find("Player");
-
 		if (arrowSpawnInterval == 0)
             arrowSpawnInterval = 1.0f;
 
+        player = GameObject.Find("Player");
+
         positionY = 6.0f;
-    }
 
-    //void Update()
-    //{
-    //    if (player.GetComponent<PlayerManager>().hp <= 0)
-    //        return;
+		//playerManager = GameObject.Find("PlayerManager");
+		// 이런식으로 변수 모두 갈아엎기 + 함수마다 /**/를 사용해 설명 적기!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+		networkManager = GameObject.Find("NetworkManager").GetComponent<NetworkManager>();
+		PlayerManager playerManager = GameObject.Find("PlayerManager").GetComponent<PlayerManager>();
+	}
 
-    //    delta += Time.deltaTime;
+	void Update()
+	{
+		if (networkManager.IsRunning)
+			return;
 
-    //    // 화살을 일정 주기로 랜덤한 위치에 생성합니다.
-    //    if (delta > arrowSpawnInterval)
-    //    {
-    //        delta = 0;
+		delta += Time.deltaTime;
 
-    //        GameObject newArrow = Instantiate(arrowPrefab);
+		// 화살을 일정 주기로 랜덤한 위치에 생성합니다.
+		if (delta > arrowSpawnInterval)
+		{
+			delta = 0;
 
-    //        positionX = Random.Range(-screenHalfWidth, screenHalfWidth);
-    //        newArrow.transform.position = new Vector3(positionX, positionY, 0);
-    //    }
-    //}
+			GameObject newArrow = Instantiate(arrowPrefab);
+
+			positionX = Random.Range(-screenHalfWidth, screenHalfWidth);
+			newArrow.transform.position = new Vector3(positionX, positionY, 0);
+		}
+	}
 }

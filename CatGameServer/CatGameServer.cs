@@ -17,9 +17,33 @@ internal class CatGameServer
 
 	private static List<IPEndPoint> clientEndPointList;
 
+	private async Task OnGameStatus(byte[] receiveBuffer)
+	{
+		GameStatusPacket gameStatusPacket = new GameStatusPacket(receiveBuffer);
+
+		switch (gameStatusPacket.gameStatus)
+		{
+			case GameStatus.Waiting:
+
+				break;
+
+			case GameStatus.Running:
+
+				break;
+
+			case GameStatus.GameOver:
+
+				break;
+
+			default:
+
+				break;
+		}
+	}
+
 	private async Task OnJoin(byte[] receiveBuffer, IPEndPoint remoteEndPoint)
 	{
-		Udon.JoinPacket joinPacket = new Udon.JoinPacket(receiveBuffer);
+		JoinPacket joinPacket = new JoinPacket(receiveBuffer);
 
 		// 연결 체크, 클라이언트 접속 리스트에 추가, 플레이어 넘버 할당 수행
 		joinPacket.isCheck = true;
@@ -31,16 +55,21 @@ internal class CatGameServer
 
 		// 접속 로그 출력
 		Console.WriteLine($"[Log] [{remoteEndPoint}] {joinPacket.playerNumber} 접속");
-	}
 
-	private async Task OnChat(byte[] receiveBuffer)
-	{
-		throw new NotImplementedException();
+		if (clientEndPointList.Count >= 2)
+		{
+			GameStatusPacket gameStatusPacket = new GameStatusPacket() { gameStatus = GameStatus.Running };
+
+			sendBuffer = gameStatusPacket.Serialize();
+			await multicastClient.SendAsync(sendBuffer, sendBuffer.Length, multicastGroupEndPoint);
+
+			Console.WriteLine($"[Log] 게임 시작");
+		}
 	}
 
 	private async Task OnKeyInput(byte[] receiveBuffer)
 	{
-		Udon.KeyInputPacket keyInputPacket = new Udon.KeyInputPacket(receiveBuffer);
+		KeyInputPacket keyInputPacket = new KeyInputPacket(receiveBuffer);
 
 		byte[] sendBuffer = keyInputPacket.Serialize();
 		// 받은 플레이어 이동 데이터를 다시 클라이언트들에게 송신
@@ -67,33 +96,33 @@ internal class CatGameServer
 			try
 			{
 				UdpReceiveResult receiveResult = await unicastClient.ReceiveAsync();
-				Udon.PacketType packetType = (Udon.PacketType)receiveResult.Buffer[0];
+				PacketType packetType = (PacketType)receiveResult.Buffer[0];
 
 				Task taskHandle;
 
 				// 데이터 구별 후 맞는 로직 실행
 				switch (packetType)
 				{
-					case Udon.PacketType.Join:
+					case PacketType.GameStatus:
+						taskHandle = Task.Run(() => OnGameStatus(receiveResult.Buffer));
+						continue;
+
+					case PacketType.Join:
 						taskHandle = Task.Run(() => OnJoin(receiveResult.Buffer, receiveResult.RemoteEndPoint));
 
 						continue;
 
-					case Udon.PacketType.Chat:
-						taskHandle = Task.Run(() => OnChat(receiveResult.Buffer));
-						continue;
-
-					case Udon.PacketType.KeyInput:
+					case PacketType.KeyInput:
 						taskHandle = Task.Run(() => OnKeyInput(receiveResult.Buffer));
 
 						continue;
 
-					case Udon.PacketType.PlayerStatus:
+					case PacketType.PlayerStatus:
 						taskHandle = Task.Run(() => OnPlayerStatus(receiveResult.Buffer));
 
 						continue;
 
-					case Udon.PacketType.ArrowSeed:
+					case PacketType.ArrowRandomSeed:
 						taskHandle = Task.Run(() => OnArrowSeed(receiveResult.Buffer));
 
 						continue;
