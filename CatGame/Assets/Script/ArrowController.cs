@@ -46,7 +46,7 @@ public class ArrowController : MonoBehaviour
 		if (!networkManager.IsRunning)
 			return;
 
-		// 화살을 speed 값의 1/10 속도로 등속 낙하시켜주는 코드
+		// 화살을 speed 값의 1/10 속도로 등속 낙하시켜주는 코드(델타 타임으로 수정 필요)
 		transform.Translate(0, -speed / 10, 0);
 
 		// 캐릭터와 화살의 거리 계산하는 코드

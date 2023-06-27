@@ -39,12 +39,9 @@ public class GameManager : MonoBehaviour
 	}
 
 	// 수정 필요
-	public void RenderPlayerHP(float playerHP)
+	public void RenderPlayerHP(PlayerNumber playerNumber, float playerHP)
 	{
-		if (playerHP <= 0)
-			playerHP = 0;
-
-		HPGauges[PlayerNumber.Player1].GetComponent<Image>().fillAmount = playerHP / 10;
+		HPGauges[playerNumber].GetComponent<Image>().fillAmount = playerHP / 10;
 	}
 
 	public void RenderWaiting(bool isRender)

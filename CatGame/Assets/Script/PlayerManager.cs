@@ -125,6 +125,7 @@ public class PlayerManager : MonoBehaviour
 	public void ResponseDecreaseHP(PlayerNumber playerNumber, float hp)
 	{
 		PlayerHPs[playerNumber] = hp;
+		gameManager.RenderPlayerHP(playerNumber, PlayerHPs[playerNumber]);
 	}
 
 	/* 함수 설명
