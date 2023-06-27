@@ -36,10 +36,13 @@ public class NetworkManager : MonoBehaviour
 		multicastClient = new UdpClient(new IPEndPoint(IPAddress.Any, 52001));
 		multicastClient.JoinMulticastGroup(multicastGroupEndPoint.Address);
 
-		receiveWaitAsyncTask = MulticastReceiveWaitAsync();
+		Application.targetFrameRate = 120;
 	}
 
-	void Update() { }
+	void Update()
+	{
+		receiveWaitAsyncTask = MulticastReceiveWaitAsync();
+	}
 
 	public async Task SendKeyInputAsync(Udon.PlayerNumber playerNumber, Udon.Direction direction)
 	{
@@ -89,7 +92,7 @@ public class NetworkManager : MonoBehaviour
 	//멀티캐스트 수신대기
 	private async Task MulticastReceiveWaitAsync()
 	{
-		while (true)
+		while (multicastClient.Available != 0)
 		{
 			try
 			{

@@ -19,6 +19,9 @@ public class PlayerManager : MonoBehaviour
 	private float[] hp = new float[2];
 	public float speed;
 
+	private float targetFrameTime = 1f / 60f;
+	private float accumulatedTime = 0f;
+
 	Task taskKeyInputAsync;
 	Task taskLeftKeyInputAsync;
 	Task taskRightKeyInputAsync;
@@ -46,10 +49,17 @@ public class PlayerManager : MonoBehaviour
 
 	void Update()
 	{
-		if (hp[(byte)playerNumber] <= 0)
-			return;
+		accumulatedTime += Time.deltaTime;
 
-		taskKeyInputAsync = InputKeyboard();
+		if (accumulatedTime >= targetFrameTime)
+		{
+			if (hp[(byte)playerNumber] <= 0)
+				return;
+
+			taskKeyInputAsync = InputKeyboard();
+
+			accumulatedTime = 0f;
+		}
 	}
 
 	// 키보드 입력을 반영하는 코드
