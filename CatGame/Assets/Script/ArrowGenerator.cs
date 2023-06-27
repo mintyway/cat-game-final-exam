@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class ArrowGenerator : MonoBehaviour
 {
-    public GameObject arrowPrefab;
 	private NetworkManager networkManager;
-	private GameObject playerManager;
-	private GameObject player;
+	private PlayerManager playerManager;
+
+	public GameObject arrowPrefab;
 
     // 게임 레벨디자인 시 조정이 필요한 값
     public float arrowSpawnInterval;
@@ -24,19 +24,17 @@ public class ArrowGenerator : MonoBehaviour
 		if (arrowSpawnInterval == 0)
             arrowSpawnInterval = 1.0f;
 
-        player = GameObject.Find("Player");
-
         positionY = 6.0f;
 
-		//playerManager = GameObject.Find("PlayerManager");
-		// 이런식으로 변수 모두 갈아엎기 + 함수마다 /**/를 사용해 설명 적기!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 		networkManager = GameObject.Find("NetworkManager").GetComponent<NetworkManager>();
-		PlayerManager playerManager = GameObject.Find("PlayerManager").GetComponent<PlayerManager>();
+		playerManager = GameObject.Find("PlayerManager").GetComponent<PlayerManager>();
+
+		Random.InitState(0);
 	}
 
 	void Update()
 	{
-		if (networkManager.IsRunning)
+		if (!networkManager.IsRunning)
 			return;
 
 		delta += Time.deltaTime;

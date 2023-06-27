@@ -43,7 +43,7 @@ public class ArrowController : MonoBehaviour
 
 	void Update()
 	{
-		if (networkManager.IsRunning)
+		if (!networkManager.IsRunning)
 			return;
 
 		// 화살을 speed 값의 1/10 속도로 등속 낙하시켜주는 코드
@@ -65,7 +65,7 @@ public class ArrowController : MonoBehaviour
 		if (playingPlayerArrowDistance < playerCollisionRadius + arrowCollisionRadius)
 		{
 			Destroy(gameObject);
-			playerManager.DecreaseHP(damage);
+			playerManager.RequestDecreaseHP(damage);
 		}
 
 		// 플레이 중이 아닌 캐릭터와 화살이 충돌 시

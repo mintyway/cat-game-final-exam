@@ -13,7 +13,8 @@ public class GameManager : MonoBehaviour
 
 	private GameObject waiting;
 	private GameObject gameOver;
-	public Dictionary<PlayerNumber, GameObject> HPGauges { get; private set; }
+	public Dictionary<PlayerNumber, GameObject> HPGauges { get; private set; } = new Dictionary<PlayerNumber, GameObject>();
+	private GameObject testObject;
 
 	private RectTransform waitingRectTransform;
 	private RectTransform gameOverRectTransform;
@@ -25,6 +26,7 @@ public class GameManager : MonoBehaviour
 
 		waiting = GameObject.Find("Waiting");
 		gameOver = GameObject.Find("GameOver");
+
 		HPGauges[PlayerNumber.Player1] = GameObject.Find("Player1HPGauge");
 		HPGauges[PlayerNumber.Player2] = GameObject.Find("Player2HPGauge");
 

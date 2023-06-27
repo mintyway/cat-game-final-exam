@@ -23,6 +23,7 @@ public class PlayerManager : MonoBehaviour
 	private float targetFrameTime = 1f / 60f;
 	private float accumulatedTime = 0f;
 
+	Task taskDecreaseHP;
 	Task taskKeyInputAsync;
 	Task taskLeftKeyInputAsync;
 	Task taskRightKeyInputAsync;
@@ -51,7 +52,7 @@ public class PlayerManager : MonoBehaviour
 
 	void Update()
 	{
-		if (networkManager.IsRunning)
+		if (!networkManager.IsRunning)
 			return;
 
 		accumulatedTime += Time.deltaTime;
@@ -62,7 +63,7 @@ public class PlayerManager : MonoBehaviour
 			if (PlayerHPs[PlayingPlayerNumber] <= 0)
 				return;
 
-			taskKeyInputAsync = InputKeyboard();
+			taskKeyInputAsync = RequestInputKeyboard();
 
 			accumulatedTime -= targetFrameTime;
 		}
@@ -74,7 +75,7 @@ public class PlayerManager : MonoBehaviour
 	 * 사용 예시:
 	 * Task task = InputKeyboard();
 	 */
-	private async Task InputKeyboard()
+	private async Task RequestInputKeyboard()
 	{
 		if (Input.GetKey(KeyCode.LeftArrow))
 		{
@@ -116,12 +117,14 @@ public class PlayerManager : MonoBehaviour
 	 * playerManager.DecreaseHP(damage);
 	 */
 	// 수정 필요
-	public void DecreaseHP(float damage)
+	public void RequestDecreaseHP(float damage)
 	{
-		PlayerHPs[PlayingPlayerNumber] -= damage;
+		taskDecreaseHP = networkManager.SendPlayerStatusAsync(PlayingPlayerNumber, PlayerHPs[PlayingPlayerNumber] - damage);
+	}
 
-		if (PlayerHPs[PlayingPlayerNumber] <= 0)
-		{ }
+	public void ResponseDecreaseHP(PlayerNumber playerNumber, float hp)
+	{
+		PlayerHPs[playerNumber] = hp;
 	}
 
 	/* 함수 설명

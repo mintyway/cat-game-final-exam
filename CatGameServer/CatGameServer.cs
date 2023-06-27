@@ -81,7 +81,23 @@ internal class CatGameServer
 
 	private async Task OnPlayerStatus(byte[] receiveBuffer)
 	{
-		throw new NotImplementedException();
+		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket(receiveBuffer);
+		byte[] sendBuffer;
+
+		if (!playerStatusPacket.isAlive)
+		{
+			GameStatusPacket gameStatusPacket = new GameStatusPacket() { gameStatus = GameStatus.GameOver };
+
+			sendBuffer = gameStatusPacket.Serialize();
+			await multicastClient.SendAsync(sendBuffer, sendBuffer.Length, multicastGroupEndPoint);
+
+			Console.WriteLine($"[Log] 게임 오버");
+		}
+
+		sendBuffer = playerStatusPacket.Serialize();
+		await multicastClient.SendAsync(sendBuffer, sendBuffer.Length, multicastGroupEndPoint);
+
+		Console.WriteLine($"[Log] {playerStatusPacket.playerNumber}의 HP: {playerStatusPacket.hp}");
 	}
 
 	private async Task OnArrowSeed(byte[] receiveBuffer)

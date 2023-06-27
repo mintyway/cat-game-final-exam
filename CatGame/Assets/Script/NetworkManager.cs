@@ -45,6 +45,20 @@ public class NetworkManager : MonoBehaviour
 		receiveWaitAsyncTask = MulticastReceiveWaitAsync();
 	}
 
+	public async Task SendPlayerStatusAsync(PlayerNumber playerNumber, float hp)
+	{
+		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket() { playerNumber = playerNumber, isAlive = true, hp = hp };
+
+		if (playerStatusPacket.hp <= 0)
+		{
+			playerStatusPacket.hp = 0f;
+			playerStatusPacket.isAlive = false;
+		}
+
+		byte[] sendBuffer = playerStatusPacket.Serialize();
+		await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
+	}
+
 	/* 함수 설명
 	 * PlayerManager로부터 전달된 enum 타입 플레이어 번호와 enum 타입 이동 방향을 매개변수로 사용하여 서버로 전송하는 비동기 함수이다.
 	 * 플레이어 번호는 나중에 서버로 부터 키 입력 데이터를 다시 받을 때 어떤 캐릭터를 움직여야할 지 구별하기위해 사용한다.
@@ -54,7 +68,7 @@ public class NetworkManager : MonoBehaviour
 	 */
 	public async Task SendKeyInputAsync(PlayerNumber playerNumber, Direction direction)
 	{
-		KeyInputPacket keyInputPacket = new KeyInputPacket { playerNumber = playerNumber, direction = direction };
+		KeyInputPacket keyInputPacket = new KeyInputPacket() { playerNumber = playerNumber, direction = direction };
 
 		byte[] sendBuffer = keyInputPacket.Serialize();
 		await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
@@ -143,6 +157,13 @@ public class NetworkManager : MonoBehaviour
 			playerManager.MovePlayer(keyInputPacket.playerNumber, Direction.Right);
 	}
 
+	private void OnPlayerStatus(byte[] receiveBuffer)
+	{
+		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket(receiveBuffer);
+
+		playerManager.ResponseDecreaseHP(playerStatusPacket.playerNumber, playerStatusPacket.hp);
+	}
+
 	/* 함수 설명
 	 * 멀티캐스트 주소로 오는 데이터를비동기 수신을 하고,
 	 * 수신받은 데이터 타입에 따라 그에 맞는 로직으로 실행할 수 있도록 도와주는 핸들링을 지원하는 함수입니다.
@@ -171,6 +192,8 @@ public class NetworkManager : MonoBehaviour
 						break;
 
 					case PacketType.PlayerStatus:
+						OnPlayerStatus(receiveResult.Buffer);
+
 						break;
 
 					case PacketType.ArrowRandomSeed:
