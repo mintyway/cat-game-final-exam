@@ -109,14 +109,6 @@ public class PlayerManager : MonoBehaviour
 		}
 	}
 
-	/* 함수 설명
-	 * 화살 같은 공격에 의한 float타입 데미지를 입력으로 받고 클라이언트에서 플레이중인 캐릭터의 체력을 감소시키는 함수이다.
-	 * 클라이언트에서 플레이 중인 캐릭터의 피격 판정을 위해 사용된다.
-	 * 
-	 * 사용 예시:
-	 * playerManager.DecreaseHP(damage);
-	 */
-	// 수정 필요
 	public void RequestDecreaseHP(float damage)
 	{
 		taskDecreaseHP = networkManager.SendPlayerStatusAsync(PlayingPlayerNumber, PlayerHPs[PlayingPlayerNumber] - damage);

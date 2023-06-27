@@ -270,7 +270,7 @@ GameObject:
   - component: {fileID: 386126333}
   - component: {fileID: 386126332}
   m_Layer: 5
-  m_Name: Player1HPGauge
+  m_Name: Player2HPGauge
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -289,7 +289,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 967257267}
-  m_RootOrder: 0
+  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
@@ -548,8 +548,8 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 386126331}
   - {fileID: 1175212658}
+  - {fileID: 386126331}
   - {fileID: 390153706}
   - {fileID: 2008680314}
   m_Father: {fileID: 0}
@@ -821,7 +821,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: e671f35f4e1a69f448e0d72add6a8223, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 8ebd5b55fd5b7cc4eb6efef78e1480de, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -903,7 +903,7 @@ GameObject:
   - component: {fileID: 1175212660}
   - component: {fileID: 1175212659}
   m_Layer: 5
-  m_Name: Player2HPGauge
+  m_Name: Player1HPGauge
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -922,7 +922,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 967257267}
-  m_RootOrder: 1
+  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
@@ -1440,7 +1440,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2109689565}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8b43a244ae64d824db863dd236a5ec5b, type: 3}
   m_Name: 
@@ -1516,6 +1516,10 @@ PrefabInstance:
     - target: {fileID: 4586699515189573462, guid: d1f329b45c1619245b4f36b67aa151b8, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7163640081566116239, guid: d1f329b45c1619245b4f36b67aa151b8, type: 3}
+      propertyPath: speed
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d1f329b45c1619245b4f36b67aa151b8, type: 3}
