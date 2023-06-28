@@ -104,7 +104,7 @@ public class NetworkManager : MonoBehaviour
 	 * 입출력 설명:
 	 * GameStatusPacket이 직렬화 되어 있는 바이트 배열을 매개변수로 사용한다.
 	 */
-	private async Task OnGameStatus(byte[] serializedGamaStatusPacket)
+	private void OnGameStatus(byte[] serializedGamaStatusPacket)
 	{
 		GameStatusPacket gameStatusPacket = new GameStatusPacket(serializedGamaStatusPacket);
 
@@ -112,13 +112,13 @@ public class NetworkManager : MonoBehaviour
 		{
 			case GameStatus.Waiting:
 				gameManager.RenderWaiting();
+
 				IsRunning = false;
 
 				break;
 
 			case GameStatus.Running:
 				gameManager.RenderGame();
-				await Task.Delay(1000);
 
 				IsRunning = true;
 
@@ -186,7 +186,7 @@ public class NetworkManager : MonoBehaviour
 				switch (packetType)
 				{
 					case PacketType.GameStatus:
-						await OnGameStatus(receiveResult.Buffer);
+						OnGameStatus(receiveResult.Buffer);
 						break;
 
 					case PacketType.KeyInput:
