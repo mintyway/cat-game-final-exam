@@ -177,6 +177,8 @@ internal class CatGameServer
 		// 멀티캐스트용 클라이언트 설정(송신만 할 것이기에 바인드는 필요 없음)
 		multicastGroupEndPoint = new IPEndPoint(IPAddress.Parse("239.0.0.1"), 52001);
 		multicastClient = new UdpClient();
+		multicastClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+		multicastClient.Client.ExclusiveAddressUse = false;
 		multicastClient.JoinMulticastGroup(multicastGroupEndPoint.Address);
 
 		// 접속한 클라이언트를 저장할 리스트

@@ -22,7 +22,6 @@ public class NetworkManager : MonoBehaviour
 	private UdpClient unicastClient;
 	private IPEndPoint multicastGroupEndPoint;
 	private UdpClient multicastClient;
-	private Task receiveWaitAsyncTask;
 
 	void Start()
 	{
@@ -36,98 +35,97 @@ public class NetworkManager : MonoBehaviour
 		unicastClient = new UdpClient();
 
 		multicastGroupEndPoint = new IPEndPoint(IPAddress.Parse("239.0.0.1"), 52001);
-		multicastClient = new UdpClient(new IPEndPoint(IPAddress.Any, 52001));
+		multicastClient = new UdpClient();
+		multicastClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+		multicastClient.Client.ExclusiveAddressUse = false;
+		multicastClient.Client.Bind(new IPEndPoint(IPAddress.Any, 52001));
 		multicastClient.JoinMulticastGroup(multicastGroupEndPoint.Address);
+
+		// 디버그용
+		//IsRunning = true;
 	}
 
-	void Update()
+	async void Update()
 	{
-		receiveWaitAsyncTask = MulticastReceiveWaitAsync();
+		await MulticastReceiveWaitAsync();
 	}
 
-	public async Task SendPlayerStatusAsync(PlayerNumber playerNumber, float hp)
-	{
-		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket() { playerNumber = playerNumber, isAlive = true, hp = hp };
-
-		if (playerStatusPacket.hp <= 0)
-		{
-			playerStatusPacket.hp = 0f;
-			playerStatusPacket.isAlive = false;
-		}
-
-		byte[] sendBuffer = playerStatusPacket.Serialize();
-		await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
-	}
-
-	/* 함수 설명
-	 * PlayerManager로부터 전달된 enum 타입 플레이어 번호와 enum 타입 이동 방향을 매개변수로 사용하여 서버로 전송하는 비동기 함수이다.
-	 * 플레이어 번호는 나중에 서버로 부터 키 입력 데이터를 다시 받을 때 어떤 캐릭터를 움직여야할 지 구별하기위해 사용한다.
+	/* 함수 설명:
+	 * 다른 스크립트에서 서버로 데이터를 전송해야할 때 사용하는 함수이다.
 	 * 
-	 * 사용 예시:
-	 * Task task = SendKeyInputAsync(playerNumber, direction);
+	 * 입출력 설명:
+	 * 직렬화한 패킷이 담긴 byte 배열을 매개변수로 사용한다.
 	 */
-	public async Task SendKeyInputAsync(PlayerNumber playerNumber, Direction direction)
+	public void SendServer(byte[] serializedPacket)
 	{
-		KeyInputPacket keyInputPacket = new KeyInputPacket() { playerNumber = playerNumber, direction = direction };
-
-		byte[] sendBuffer = keyInputPacket.Serialize();
-		await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
+		try
+		{
+			unicastClient.Send(serializedPacket, serializedPacket.Length, unicastServerEndPoint);
+		}
+		catch (Exception e)
+		{
+			Debug.LogException(e);
+		}
 	}
 
-	/* 함수 설명
-	 * 서버로부터 할당 받은 enum 타입 플레이어 번호를 반환하는 비동기 함수이다. 
-	 * 서버에 접속을 요청하고 플레이어 번호를 할당 받는데 사용한다.
-	 * 번호 할당받기에 실패하면 무한 루프를 통해 할당 받을때까지 시도한다.
-	 * 비동기 함수로 구현한 이유는 혹시 무한 루프를 돌게 되었을때 메인 스레드가 블로킹되지 않기 위함이다.
+	/* 함수 설명:
+	 * 서버에 접속을 요청하고 플레이어 번호를 할당 받는 함수이다.
+	 * 
+	 * 입출력 설명:
+	 * 서버로부터 할당 받은 플레이어 번호를 PlayerNumber 타입으로 반환하는 비동기 함수이다. 
 	 * 
 	 * 사용 예시:
 	 * Task task = OnJoinAsync();
 	 * PlayerNumber playerNumber = await task;
 	 */
-	public async Task<PlayerNumber> OnJoinAsync()
+	public PlayerNumber JoinAndAllocatePlayerNumber()
 	{
 		while (true)
 		{
 			JoinPacket joinPacket = new JoinPacket() { isCheck = false };
 
 			byte[] sendBuffer = joinPacket.Serialize();
-			await unicastClient.SendAsync(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
+			unicastClient.Send(sendBuffer, sendBuffer.Length, unicastServerEndPoint);
 
-			UdpReceiveResult receiveResult = await unicastClient.ReceiveAsync();
-			joinPacket.Deserialize(receiveResult.Buffer);
+			IPEndPoint remoteEndPoint = new IPEndPoint(IPAddress.None, 0);
+			byte[] receiveBuffer = unicastClient.Receive(ref remoteEndPoint);
+			joinPacket.Deserialize(receiveBuffer);
 
-			if (joinPacket.isCheck == false)        // isCheck는 서버와 접속에 성공했는지를 나타내는 멤버변수
+			if (!joinPacket.isCheck)        // 할당 실패시 다시 루프
 				continue;
 
 			return joinPacket.playerNumber;
 		}
 	}
 
-	private void OnGameStatus(byte[] receiveBuffer)
+	/* 함수 설명:
+	 * 서버에서 받아온 게임 상태 데이터를 클라이언트로 반영하기위해 해당 스크립트로 넘기는 기능을 하는 함수이다.
+	 * 
+	 * 입출력 설명:
+	 * GameStatusPacket이 직렬화 되어 있는 바이트 배열을 매개변수로 사용한다.
+	 */
+	private void OnGameStatus(byte[] serializedGamaStatusPacket)
 	{
-		GameStatusPacket gameStatusPacket = new GameStatusPacket(receiveBuffer);
+		GameStatusPacket gameStatusPacket = new GameStatusPacket(serializedGamaStatusPacket);
 
 		switch (gameStatusPacket.gameStatus)
 		{
 			case GameStatus.Waiting:
-				gameManager.RenderWaiting(true);
-				gameManager.RenderGameOver(false);
+				gameManager.RenderWaiting();
 
 				IsRunning = false;
 
 				break;
 
 			case GameStatus.Running:
-				gameManager.RenderWaiting(false);
-				gameManager.RenderGameOver(false);
+				gameManager.RenderGame();
 
 				IsRunning = true;
 
 				break;
 
 			case GameStatus.GameOver:
-				gameManager.RenderWaiting(false);
-				gameManager.RenderGameOver(true);
+				gameManager.RenderGameOver();
 
 				IsRunning = false;
 
@@ -138,38 +136,38 @@ public class NetworkManager : MonoBehaviour
 		}
 	}
 
-	/* 함수 설명
-	 * 직렬화되어 있는 byte 배열 타입의 키입력 패킷을 입력받고
-	 * 역직렬화 후 PlayerManger의 MovePlayer 함수에 필요한 인자를 넣어 호출하는 함수이다.
-	 * 이 함수는 서버에서 받아온 키입력 데이터를 실제로 플레이어를 움직일 수 있도록
-	 * PlayerManger의 MovePlayer를 호출하는 함수이다.
+	/* 함수 설명:
+	 * 서버에서 받아온 키입력 데이터를 클라이언트에 반영하는 함수이다.
 	 * 
-	 * 사용 예시:
-	 * OnInputKey(receiveBuffer);
+	 * 입출력 설명:
+	 * KeyInputPacket이 직렬화 되어 있는 바이트 배열을 매개변수로 사용한다
 	 */
-	private void OnKeyInput(byte[] receiveBuffer)
+	private void OnKeyInput(byte[] serializedKeyInputPacket)
 	{
-		KeyInputPacket keyInputPacket = new KeyInputPacket(receiveBuffer);
+		KeyInputPacket keyInputPacket = new KeyInputPacket(serializedKeyInputPacket);
 
 		if (keyInputPacket.direction == Direction.Left)
-			playerManager.MovePlayer(keyInputPacket.playerNumber, Direction.Left);
+			playerManager.Players[keyInputPacket.playerNumber].transform.Translate(-playerManager.Speed, 0, 0);
 		else
-			playerManager.MovePlayer(keyInputPacket.playerNumber, Direction.Right);
+			playerManager.Players[keyInputPacket.playerNumber].transform.Translate(playerManager.Speed, 0, 0);
 	}
 
-	private void OnPlayerStatus(byte[] receiveBuffer)
-	{
-		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket(receiveBuffer);
-
-		playerManager.ResponseDecreaseHP(playerStatusPacket.playerNumber, playerStatusPacket.hp);
-	}
-
-	/* 함수 설명
-	 * 멀티캐스트 주소로 오는 데이터를비동기 수신을 하고,
-	 * 수신받은 데이터 타입에 따라 그에 맞는 로직으로 실행할 수 있도록 도와주는 핸들링을 지원하는 함수입니다.
+	/* 함수 설명:
+	 * 서버로부터 받아온 HP 정보나 생존 정보를 클라이언트에 반영하는 함수이다.
 	 * 
-	 * 사용 예시:
-	 * Task task = MulticastReceiveWaitAsync();
+	 * 입출력 설명:
+	 * PlayerStatusPacket이 직렬화 되어 있는 바이트 배열을 매개변수로 사용한다.
+	 */
+	private void OnPlayerStatus(byte[] serializedPlayerStatusPacket)
+	{
+		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket(serializedPlayerStatusPacket);
+
+		playerManager.PlayerHPs[playerStatusPacket.playerNumber] = playerStatusPacket.hp;
+		gameManager.RenderPlayerHP(playerStatusPacket.playerNumber, playerManager.PlayerHPs[playerStatusPacket.playerNumber]);
+	}
+
+	/* 함수 설명:
+	 * 서버로부터 비동기 수신대기를 하며, 수신한 데이터를 패킷 종류별로 구분해 그에 맞는 로직을 실행할 수 있도록 도와주는 함수이다.
 	 */
 	private async Task MulticastReceiveWaitAsync()
 	{
