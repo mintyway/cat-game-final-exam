@@ -17,30 +17,6 @@ internal class CatGameServer
 
 	private static List<IPEndPoint> clientEndPointList;
 
-	private async Task OnGameStatus(byte[] receiveBuffer)
-	{
-		GameStatusPacket gameStatusPacket = new GameStatusPacket(receiveBuffer);
-
-		switch (gameStatusPacket.gameStatus)
-		{
-			case GameStatus.Waiting:
-
-				break;
-
-			case GameStatus.Running:
-
-				break;
-
-			case GameStatus.GameOver:
-
-				break;
-
-			default:
-
-				break;
-		}
-	}
-
 	private async Task OnJoin(byte[] receiveBuffer, IPEndPoint remoteEndPoint)
 	{
 		JoinPacket joinPacket = new JoinPacket(receiveBuffer);
@@ -100,11 +76,6 @@ internal class CatGameServer
 		Console.WriteLine($"[Log] {playerStatusPacket.playerNumber}의 HP: {playerStatusPacket.hp}");
 	}
 
-	private async Task OnArrowSeed(byte[] receiveBuffer)
-	{
-		throw new NotImplementedException();
-	}
-
 	private async Task ReceiveWaitAsync()
 	{
 		while (true)
@@ -119,10 +90,6 @@ internal class CatGameServer
 				// 데이터 구별 후 맞는 로직 실행
 				switch (packetType)
 				{
-					case PacketType.GameStatus:
-						taskHandle = Task.Run(() => OnGameStatus(receiveResult.Buffer));
-						continue;
-
 					case PacketType.Join:
 						taskHandle = Task.Run(() => OnJoin(receiveResult.Buffer, receiveResult.RemoteEndPoint));
 
@@ -135,11 +102,6 @@ internal class CatGameServer
 
 					case PacketType.PlayerStatus:
 						taskHandle = Task.Run(() => OnPlayerStatus(receiveResult.Buffer));
-
-						continue;
-
-					case PacketType.ArrowRandomSeed:
-						taskHandle = Task.Run(() => OnArrowSeed(receiveResult.Buffer));
 
 						continue;
 

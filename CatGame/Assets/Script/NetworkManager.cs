@@ -165,7 +165,7 @@ public class NetworkManager : MonoBehaviour
 		playerManager.IsAlive[playerStatusPacket.playerNumber] = playerStatusPacket.isAlive;
 		gameManager.RenderPlayerHP(playerStatusPacket.playerNumber, playerManager.PlayerHPs[playerStatusPacket.playerNumber]);
 
-		if (!playerStatusPacket.isAlive)
+		if (!playerStatusPacket.isAlive)		// 한 플레이어가 죽게되면 승패 출력
 		{
 			gameManager.RenderGameOver();
 		}
