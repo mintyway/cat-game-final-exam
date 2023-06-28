@@ -118,7 +118,7 @@ public class NetworkManager : MonoBehaviour
 
 			case GameStatus.Running:
 				gameManager.RenderGame();
-				await Task.Delay(3000);
+				await Task.Delay(1000);
 
 				IsRunning = true;
 

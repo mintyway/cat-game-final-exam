@@ -36,6 +36,8 @@ internal class CatGameServer
 		{
 			GameStatusPacket gameStatusPacket = new GameStatusPacket() { gameStatus = GameStatus.Running };
 
+			await Task.Delay(3000);
+
 			sendBuffer = gameStatusPacket.Serialize();
 			await multicastClient.SendAsync(sendBuffer, sendBuffer.Length, multicastGroupEndPoint);
 
