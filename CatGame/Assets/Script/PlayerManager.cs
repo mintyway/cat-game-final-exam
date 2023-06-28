@@ -12,6 +12,7 @@ public class PlayerManager : MonoBehaviour
 {
 	private NetworkManager networkManager;
 	public Dictionary<PlayerNumber, GameObject> Players { get; private set; } = new Dictionary<PlayerNumber, GameObject>();
+	public Dictionary<PlayerNumber, bool> IsAlive { get; set; } = new Dictionary<PlayerNumber, bool>();
 
 	private readonly float initialHP = 10f;
 	public Dictionary<PlayerNumber, float> PlayerHPs { get; private set; } = new Dictionary<PlayerNumber, float>();
@@ -32,6 +33,9 @@ public class PlayerManager : MonoBehaviour
 
 		PlayerHPs[PlayerNumber.Player1] = initialHP;
 		PlayerHPs[PlayerNumber.Player2] = initialHP;
+
+		IsAlive[PlayerNumber.Player1] = true;
+		IsAlive[PlayerNumber.Player2] = true;
 
 		PlayingPlayerNumber = networkManager.JoinAndAllocatePlayerNumber();
 		NonPlayingPlayerNumber = (PlayerNumber)(((byte)PlayingPlayerNumber + 1) % 2);
@@ -88,7 +92,9 @@ public class PlayerManager : MonoBehaviour
 	{
 		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket()
 		{
-			playerNumber = PlayingPlayerNumber, isAlive = true, hp = PlayerHPs[PlayingPlayerNumber] - damage
+			playerNumber = PlayingPlayerNumber,
+			isAlive = IsAlive[PlayingPlayerNumber],
+			hp = PlayerHPs[PlayingPlayerNumber] - damage
 		};
 
 		if (playerStatusPacket.hp <= 0)

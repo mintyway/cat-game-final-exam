@@ -72,9 +72,16 @@ public class GameManager : MonoBehaviour
 	{
 		waitingRectTransform.anchoredPosition = new Vector2(0, -1080);
 
-		if (playerManager.PlayerHPs[playerManager.NonPlayingPlayerNumber] <= 0)
+		if (playerManager.IsAlive[playerManager.PlayingPlayerNumber])
+		{
+			defeatRectTransform.anchoredPosition = new Vector2(0, -1080);
 			victoryRectTransform.anchoredPosition = Vector2.zero;
+		}
 		else
+		{
+			victoryRectTransform.anchoredPosition = new Vector2(0, -1080);
 			defeatRectTransform.anchoredPosition = Vector2.zero;
+		}
+
 	}
 }

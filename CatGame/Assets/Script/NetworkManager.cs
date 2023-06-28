@@ -125,8 +125,6 @@ public class NetworkManager : MonoBehaviour
 				break;
 
 			case GameStatus.GameOver:
-				gameManager.RenderGameOver();
-
 				IsRunning = false;
 
 				break;
@@ -154,6 +152,7 @@ public class NetworkManager : MonoBehaviour
 
 	/* 함수 설명:
 	 * 서버로부터 받아온 HP 정보나 생존 정보를 클라이언트에 반영하는 함수이다.
+	 * 만약 한 플레이어가 죽으면 그대로 승패를 출력한다.
 	 * 
 	 * 입출력 설명:
 	 * PlayerStatusPacket이 직렬화 되어 있는 바이트 배열을 매개변수로 사용한다.
@@ -163,7 +162,13 @@ public class NetworkManager : MonoBehaviour
 		PlayerStatusPacket playerStatusPacket = new PlayerStatusPacket(serializedPlayerStatusPacket);
 
 		playerManager.PlayerHPs[playerStatusPacket.playerNumber] = playerStatusPacket.hp;
+		playerManager.IsAlive[playerStatusPacket.playerNumber] = playerStatusPacket.isAlive;
 		gameManager.RenderPlayerHP(playerStatusPacket.playerNumber, playerManager.PlayerHPs[playerStatusPacket.playerNumber]);
+
+		if (!playerStatusPacket.isAlive)
+		{
+			gameManager.RenderGameOver();
+		}
 	}
 
 	/* 함수 설명:
